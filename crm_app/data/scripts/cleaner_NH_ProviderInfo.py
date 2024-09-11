@@ -1,3 +1,4 @@
+#Update ln 5 and ln40
 import pandas as pd
 
 # Define the file path for the CSV file
@@ -36,5 +37,6 @@ import IPython.display as display
 display.display(df_filtered.head(10))
 
 # Optionally, save the filtered DataFrame to a new CSV file
-output_file = '/Users/robertwilson/git/plotador_crm/crm_app/data/files/Sept_2024/CMS_cleaned/NH_ProviderInfo_Aug2024_cleaned.csv'
+output_file = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/NH_ProviderInfo_Aug2024_cleaned.csv'
+
 df_filtered.to_csv(output_file, index=False)
