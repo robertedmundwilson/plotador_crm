@@ -59,7 +59,6 @@ app.layout = dbc.Container([
                 ],
                 href='mailto:robert@plotador.com', style={'display': 'flex', 'alignItems': 'center', 'margin-bottom': '10px'}
             ),
-            html.H5("512-689-2044"),
             html.A("Plotador.com", href='https://www.plotador.com/', target="_blank")
         ], width=2),
     ], style={'height': '100px'}),
