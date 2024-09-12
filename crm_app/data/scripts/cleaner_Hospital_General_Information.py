@@ -1,4 +1,4 @@
-# update ln5 and ln48
+# update ln5 and ln56
 
 import pandas as pd
 
@@ -25,17 +25,25 @@ df_filtered = df.loc[:, list(columns_to_include.keys())].copy()
 df_filtered.rename(columns=columns_to_include, inplace=True)
 
 # Convert relevant columns to strings to avoid concatenation issues
-df_filtered.loc[:, 'Address'] = df_filtered['Address'].astype(str)
-df_filtered.loc[:, 'City_Town'] = df_filtered['City_Town'].astype(str)
-df_filtered.loc[:, 'State'] = df_filtered['State'].astype(str)
-df_filtered.loc[:, 'Zip'] = df_filtered['Zip'].astype(str)
+df_filtered['Address'] = df_filtered['Address'].astype(str).str.strip()
+df_filtered['City_Town'] = df_filtered['City_Town'].astype(str).str.strip()
+df_filtered['State'] = df_filtered['State'].astype(str).str.strip()
+df_filtered['Zip'] = df_filtered['Zip'].astype(str).str.strip()
 
 # Create a new column combining Address, City_Town, State, Zip, and "USA"
-df_filtered.loc[:, 'Full_Address'] = (
+df_filtered['Full_Address'] = (
     df_filtered['Address'] + ', ' +
     df_filtered['City_Town'] + ', ' +
-    df_filtered['State'] + ', ' +
+    df_filtered['State'] + ' ' +
     df_filtered['Zip'] + ', USA'
+)
+
+# Clean up the Full_Address column
+df_filtered['Full_Address'] = (
+    df_filtered['Full_Address']
+    .str.replace(r'\s+', ' ', regex=True)  # Replace multiple spaces with a single space
+    .str.replace(r'\s*,\s*', ', ', regex=True)  # Ensure single space after commas
+    .str.strip()  # Remove leading and trailing spaces
 )
 
 # Optional: Remove any duplicate rows
