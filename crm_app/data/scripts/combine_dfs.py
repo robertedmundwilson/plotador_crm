@@ -1,9 +1,11 @@
 import pandas as pd
 import os
 
-# Define paths
+# Define paths for input and output
 input_dir = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/'
 output_file = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned.csv'
+fips_file = '/Users/robertwilson/CMS_Datafiles/US_FIPS_Codes.csv'
+zip_county_file = '/Users/robertwilson/CMS_Datafiles/ZIP_COUNTY_062024.csv'
 
 # List of CSV files to combine
 csv_files = [
@@ -14,6 +16,7 @@ csv_files = [
     'NH_ProviderInfo_Aug2024_cleaned.csv'
 ]
 
+# Define column mappings for each data type
 column_mappings = {
     'DAC_NationalDownloadableFile': {
         'Type_1': 'Type_1',
@@ -86,7 +89,6 @@ column_mappings = {
     }
 }
 
-# List of valid pri_spec values
 valid_pri_spec = [
     'ADULT CONGENITAL HEART DISEASE (ACHD)',
     'ADVANCED HEART FAILURE AND TRANSPLANT CARDIOLOGY',
@@ -121,25 +123,40 @@ valid_pri_spec = [
     'RHEUMATOLOGY'
 ]
 
-# Read each CSV file into a DataFrame, rename columns, and store in a list
+# Read FIPS and ZIP-County data
+fips_df = pd.read_csv(fips_file)
+fips_df.columns = fips_df.columns.str.strip()  # Strip whitespace from column names
+zip_county_df = pd.read_csv(zip_county_file, dtype={'COUNTY': str, 'ZIP': str})
+
+# Format FIPS and ZIP-County data
+fips_df['fips_code'] = fips_df['FIPS State'].astype(str).str.zfill(2) + fips_df['FIPS County'].astype(str).str.zfill(3)
+zip_county_df['county'] = zip_county_df['COUNTY'].str.zfill(5)
+
+# Create final ZIP-County lookup
+zip_county_final = pd.merge(
+    zip_county_df[['ZIP', 'county']],
+    fips_df[['fips_code', 'County Name']],
+    left_on='county', right_on='fips_code',
+    how='left'
+)
+
+# Read CMS data files
 dataframes = []
 for file in csv_files:
     file_path = os.path.join(input_dir, file)
     df = pd.read_csv(file_path, dtype={'NPI': str, 'Zip': str})
     
-    # Get the file type from the filename
+    # Get file type
     file_type = file.split('_cleaned.csv')[0].split('_')[0]
-    if file_type == 'NH':
-        file_type = 'NH_ProviderInfo'
-    elif file_type == 'Hospital':
-        file_type = 'Hospital_General_Information'
-    elif file_type == 'DAC':
-        file_type = 'DAC_NationalDownloadableFile'
-    elif file_type == 'HH':
-        file_type = 'HH_Provider'
-    elif file_type == 'Hospice':
-        file_type = 'Hospice_Provider'
-    
+    file_type_mapping = {
+        'NH': 'NH_ProviderInfo',
+        'Hospital': 'Hospital_General_Information',
+        'DAC': 'DAC_NationalDownloadableFile',
+        'HH': 'HH_Provider',
+        'Hospice': 'Hospice_Provider'
+    }
+    file_type = file_type_mapping.get(file_type, file_type)
+
     # Combine Provider_Address into Address for all file types
     if 'Provider_Address' in df.columns:
         df['Address'] = df['Provider_Address']
@@ -151,29 +168,28 @@ for file in csv_files:
     # Rename columns based on the mapping
     df = df.rename(columns=column_mappings[file_type])
     
-    # Filter 'DAC_NationalDownloadableFile' by specific 'pri_spec' values
-    if file_type == 'DAC_NationalDownloadableFile':
-        if 'pri_spec' in df.columns:
-            df = df[df['pri_spec'].notnull() & df['pri_spec'].isin(valid_pri_spec)]
+    # Filter DAC based on pri_spec
+    if file_type == 'DAC_NationalDownloadableFile' and 'pri_spec' in df.columns:
+        df = df[df['pri_spec'].isin(valid_pri_spec)]
     
-    # Consolidate 'Facility Name' and 'Provider Name' into 'Facility_Name'
-    if 'Provider_Name' in df.columns and 'Facility_Name' not in df.columns:
-        df['Facility_Name'] = df['Provider_Name']
-        df = df.drop('Provider_Name', axis=1)
-    elif 'Provider_Name' in df.columns and 'Facility_Name' in df.columns:
-        df['Facility_Name'] = df['Facility_Name'].fillna(df['Provider_Name'])
-        df = df.drop('Provider_Name', axis=1)
+    # Consolidate Facility/Provider Name into Facility_Name
+    df['Facility_Name'] = df.apply(
+        lambda row: row['Provider_Name'] if row['Type_1'] in ['CMS - Nursing Home', 'CMS - Home Health'] else row['Facility_Name'],
+        axis=1
+    )
     
-    # Drop specified columns
-    columns_to_drop = ['CCN', 'DTC', 'Location', 'Latitude', 'Longitude']
-    df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
+    # Drop unnecessary columns
+    df = df.drop(columns=['CCN', 'DTC', 'Location', 'Latitude', 'Longitude'], errors='ignore')
+    
+    # Merge with ZIP-County data
+    df = pd.merge(df, zip_county_final[['ZIP', 'County Name']], left_on='Zip', right_on='ZIP', how='left')
     
     dataframes.append(df)
 
-# Combine all DataFrames into a single DataFrame
+# Combine all dataframes
 combined_df = pd.concat(dataframes, ignore_index=True)
 
-# Remove duplicate rows based on all columns
+# Remove duplicates
 combined_df = combined_df.drop_duplicates()
 
 # Ensure 'City_Town', 'State', and 'Zip' columns are present
@@ -185,25 +201,29 @@ for col in required_columns:
 # Convert Zip to string and keep only the first 5 digits
 combined_df['Zip'] = combined_df['Zip'].astype(str).str[:5]
 
-# Create a subset of the data including only zip codes 78751 and 78703
-subset_df = combined_df[combined_df['Zip'].isin(['78751', '78703'])]
 
-# Save the full combined DataFrame to a new CSV file
-combined_df.to_csv(output_file, index=False)
+# Drop the 'Provider_Name' column
+combined_df = combined_df.drop(columns=['Provider_Name'], errors='ignore')
+combined_df = combined_df.drop(columns=['ZIP'], errors='ignore')
+
+# Drop the 'County' column if it exists (if not needed)
+combined_df = combined_df.drop(columns=['County'], errors='ignore')
+
+# Rename 'County_Name' to 'County' and make values uppercase
+combined_df = combined_df.rename(columns={'County Name': 'County'})
+combined_df['County'] = combined_df['County'].str.upper()
+print(combined_df.head(10))
+
+subset_df = combined_df.groupby('Type_1').first().reset_index()
 
 # Save the subset DataFrame to a new CSV file
 subset_output_file = output_file.replace('.csv', '_subset.csv')
 subset_df.to_csv(subset_output_file, index=False)
 
-print(f"Combined data has been saved to {output_file}")
-print(f"Total number of rows in combined data: {len(combined_df)}")
-print(f"Columns in the combined DataFrame: {combined_df.columns.tolist()}")
-print(f"Rows per Type_1 category in full dataset:")
-print(combined_df['Type_1'].value_counts())
 
-print(f"\nSubset data has been saved to {subset_output_file}")
-print(f"Total number of rows in subset data: {len(subset_df)}")
-print(f"Rows per Type_1 category in subset:")
-print(subset_df['Type_1'].value_counts())
-print(f"\nZip code distribution in subset:")
-print(subset_df['Zip'].value_counts())
+# Save combined data
+combined_df.to_csv(output_file, index=False)
+
+# Output info
+print(f"Combined data saved to {output_file}")
+print(f"Total number of rows in combined data: {len(combined_df)}")
