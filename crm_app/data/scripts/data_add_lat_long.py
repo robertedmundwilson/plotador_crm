@@ -4,11 +4,10 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 
 # Determine the path to the CSV file
-current_directory = os.path.dirname(__file__)
-CSV_FILE = os.path.join(current_directory, 'provider_july7.csv')
+CSV_FILE = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned.csv'
 
 # Read the CSV file into a DataFrame
-df = pd.read_csv(CSV_FILE)
+df = pd.read_csv(CSV_FILE, encoding='ISO-8859-1')  # Specify encoding to avoid UnicodeDecodeError
 df = df.drop(columns=['Latitude', 'Longitude'], errors='ignore')
 
 # Function to clean address
@@ -24,17 +23,16 @@ def clean_address(address):
 
 # Function to apply clean_address to relevant columns
 def apply_clean_address(row):
-    for col in ['Address', 'Address Line 1', 'Provider Address','adr_ln_1']:
-        if col in row and pd.notnull(row[col]):
-            return clean_address(row[col])
+    # Use 'Full_Address' for geocoding
+    if 'Full_Address' in row and pd.notnull(row['Full_Address']):
+        return clean_address(row['Full_Address'])
     return None
 
 # Apply clean_address function to create 'Cleaned Address' column
 df['Cleaned Address'] = df.apply(apply_clean_address, axis=1)
 
 # Filter DataFrame for the specific city and get distinct addresses
-df_subset = df[df['City/Town'] == 'CHARLESTON'].copy()
-distinct_addresses = df_subset['Cleaned Address'].dropna().unique()
+distinct_addresses = df['Cleaned Address'].dropna().unique()
 
 # Function to geocode address with retry mechanism
 def geocode_address(address):
@@ -44,6 +42,7 @@ def geocode_address(address):
         try:
             location = geolocator.geocode(address)
             if location:
+                print(f"Geolocator: {geolocator}")  # Print geolocator after successful geocoding
                 return location.latitude, location.longitude
             else:
                 print(f"Geocoding failed for address: {address}")
@@ -67,8 +66,11 @@ address_coords[['Latitude', 'Longitude']] = address_coords['Cleaned Address'].ap
 )
 
 # Merge the coordinates back to the original DataFrame
-df_subset = df_subset.merge(address_coords, on='Cleaned Address', how='left')
+df = df.merge(address_coords, on='Cleaned Address', how='left')  # Use df directly
+
+# Add geo_lat_long column
+df['geo_lat_long'] = df['Latitude'].astype(str) + ',' + df['Longitude'].astype(str)
 
 # Save to CSV
-COORDINATES_CSV = os.path.join(current_directory, 'provider_july7_enhanced.csv')
-df_subset.to_csv(COORDINATES_CSV, index=False)
+COORDINATES_CSV = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned_enhanced.csv'
+df.to_csv(COORDINATES_CSV, index=False)

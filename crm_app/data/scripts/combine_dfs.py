@@ -9,7 +9,7 @@ zip_county_file = '/Users/robertwilson/CMS_Datafiles/ZIP_COUNTY_062024.csv'
 
 # List of CSV files to combine
 csv_files = [
-    'DAC_NationalDownloadableFile_cleaned.csv',
+    # 'DAC_NationalDownloadableFile_cleaned.csv',
     'HH_Provider_Jul2024_cleaned.csv',
     'Hospice_Provider_Aug2024_cleaned.csv',
     'Hospital_General_Information_cleaned.csv',
@@ -151,11 +151,15 @@ for file in csv_files:
     file_type_mapping = {
         'NH': 'NH_ProviderInfo',
         'Hospital': 'Hospital_General_Information',
-        'DAC': 'DAC_NationalDownloadableFile',
+        # 'DAC': 'DAC_NationalDownloadableFile',  # Commented out to skip DAC files
         'HH': 'HH_Provider',
         'Hospice': 'Hospice_Provider'
     }
     file_type = file_type_mapping.get(file_type, file_type)
+
+    # Skip DAC_NationalDownloadableFile_cleaned
+    # if file_type == 'DAC_NationalDownloadableFile':
+    #     continue  # Skip this file
 
     # Combine Provider_Address into Address for all file types
     if 'Provider_Address' in df.columns:
@@ -167,10 +171,6 @@ for file in csv_files:
     
     # Rename columns based on the mapping
     df = df.rename(columns=column_mappings[file_type])
-    
-    # Filter DAC based on pri_spec
-    if file_type == 'DAC_NationalDownloadableFile' and 'pri_spec' in df.columns:
-        df = df[df['pri_spec'].isin(valid_pri_spec)]
     
     # Consolidate Facility/Provider Name into Facility_Name
     df['Facility_Name'] = df.apply(
@@ -201,7 +201,6 @@ for col in required_columns:
 # Convert Zip to string and keep only the first 5 digits
 combined_df['Zip'] = combined_df['Zip'].astype(str).str[:5]
 
-
 # Drop the 'Provider_Name' column
 combined_df = combined_df.drop(columns=['Provider_Name'], errors='ignore')
 combined_df = combined_df.drop(columns=['ZIP'], errors='ignore')
@@ -220,6 +219,7 @@ subset_df = combined_df.groupby('Type_1').first().reset_index()
 subset_output_file = output_file.replace('.csv', '_subset.csv')
 subset_df.to_csv(subset_output_file, index=False)
 
+print(f"Number of rows in combined_df: {len(combined_df)}")
 
 # Save combined data
 combined_df.to_csv(output_file, index=False)
