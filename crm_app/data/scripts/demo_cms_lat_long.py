@@ -7,9 +7,7 @@ import googlemaps
 CSV_FILE = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned_ALL.csv'
 
 # Google Maps API Key (Replace 'YOUR_GOOGLE_API_KEY' with your actual API key)
-gmaps = googlemaps.Client(key='AIzaSyATO9diFoJqVSCqa1VKPlOSYTf-RC2nGag')
-# gmaps = googlemaps.Client(key='AIzaSyCYg6j2Sj9NdHysf6hMZo-RHYhbnBsMvCk') #robertedmundwilson
-
+gmaps = googlemaps.Client(key='') #see 1password Google Map API Key
 
 # Read the CSV file into a DataFrame
 df = pd.read_csv(CSV_FILE)
@@ -133,3 +131,6 @@ print(f"Total addresses where geocoding failed: {failure_count}")
 
 # Rename 'Beds' column to 'Potential'
 df.rename(columns={'Beds': 'Potential'}, inplace=True)
+
+# Create a new column 'Actual' with empty strings
+df['Actual'] = ''
