@@ -3,7 +3,7 @@
 import pandas as pd
 
 # Define the file path for the CSV file
-file_path = '/Users/robertwilson/git/plotador_crm/crm_app/data/files/Sept_2024/CMS_raw/NH_ProviderInfo_Aug2024.csv'
+file_path = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_raw/NH_ProviderInfo_Aug2024.csv'
 
 # Define the columns to include and their new names
 columns_to_include = {
@@ -30,10 +30,22 @@ df_filtered.rename(columns=columns_to_include, inplace=True)
 
 # Convert relevant columns to strings and clean up
 df_filtered['Provider_Address'] = df_filtered['Provider_Address'].astype(str).str.strip()
+# Check if all required columns are present in the DataFrame
+missing_columns = [col for col in columns_to_include.keys() if col not in df.columns]
+if missing_columns:
+    print(f"Missing columns: {missing_columns}")
+    raise KeyError(f"The following columns are missing from the DataFrame: {missing_columns}")
+
+# If all columns are present, proceed with filtering and renaming
+df_filtered = df[list(columns_to_include.keys())].copy()
+df_filtered.rename(columns=columns_to_include, inplace=True)
+
+# Convert City_Town to string and strip whitespace
 df_filtered['City_Town'] = df_filtered['City_Town'].astype(str).str.strip()
 df_filtered['State'] = df_filtered['State'].astype(str).str.strip()
 df_filtered['Zip'] = df_filtered['Zip'].astype(str).str.strip()
 
+df_filtered.insert(0, 'Type_1', 'CMS - Nursing Home')
 # Create a new column combining Address, City_Town, State, Zip, and "USA"
 df_filtered['Full_Address'] = (
     df_filtered['Provider_Address'] + ', ' +

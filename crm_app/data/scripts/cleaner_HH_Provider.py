@@ -10,6 +10,7 @@ columns_to_include = {
     'Provider Name': 'Provider_Name',
     'Address': 'Address',
     'City/Town': 'City_Town',
+    'State': 'State',  # Include the State column
     'ZIP Code': 'Zip',
     'Telephone Number': 'Telephone',
     'DTC Denominator': 'DTC'
@@ -25,12 +26,16 @@ df_filtered.rename(columns=columns_to_include, inplace=True)
 # Convert relevant columns to strings to avoid concatenation issues
 df_filtered['Address'] = df_filtered['Address'].astype(str).str.strip()
 df_filtered['City_Town'] = df_filtered['City_Town'].astype(str).str.strip()
+df_filtered['State'] = df_filtered['State'].astype(str).str.strip()
 df_filtered['Zip'] = df_filtered['Zip'].astype(str).str.strip()
 
-# Create a new column combining Address, City_Town, Zip, and "USA"
+df_filtered.insert(0, 'Type_1', 'CMS - Home Health')
+
+# Create a new column combining Address, City_Town, State, Zip, and "USA"
 df_filtered['Full_Address'] = (
     df_filtered['Address'] + ', ' +
     df_filtered['City_Town'] + ', ' +
+    df_filtered['State'] + ' ' +
     df_filtered['Zip'] + ', USA'
 )
 

@@ -33,7 +33,7 @@ SELECT
   Facility_Name AS Name,
   Full_Address AS addr_full,
   Telephone AS Phone,
-  '' AS Admission_Coordinator,
+  'CMS - Unassigned' AS Admission_Coordinator,
   '' AS Calls_last_6_months,
   '' AS Referrals_last_6_months,
   '' AS ac_active,  -- Empty string for second query
@@ -44,7 +44,7 @@ SELECT
   City_Town AS City,
   State,
   CAST(Zip AS STRING) AS Zip,
-  County
+  UPPER(County) AS County
 FROM 
   `moments-full.CMS.all_cms_clean6`
 WHERE State NOT IN ('null','~','GU','MP','AS','PR','State','VI')

@@ -30,6 +30,8 @@ df_filtered['City_Town'] = df_filtered['City_Town'].astype(str).str.strip()
 df_filtered['State'] = df_filtered['State'].astype(str).str.strip()
 df_filtered['Zip'] = df_filtered['Zip'].astype(str).str.strip()
 
+df_filtered.insert(0, 'Type_1', 'CMS - Hospital')
+
 # Create a new column combining Address, City_Town, State, Zip, and "USA"
 df_filtered['Full_Address'] = (
     df_filtered['Address'] + ', ' +

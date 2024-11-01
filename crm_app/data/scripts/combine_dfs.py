@@ -3,7 +3,7 @@ import os
 
 # Define paths for input and output
 input_dir = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/'
-output_file = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned.csv'
+output_file = '/Users/robertwilson/CMS_Datafiles/Sept_2024/CMS_cleaned/ALL_CMS_cleaned_ALL.csv'
 fips_file = '/Users/robertwilson/CMS_Datafiles/US_FIPS_Codes.csv'
 zip_county_file = '/Users/robertwilson/CMS_Datafiles/ZIP_COUNTY_062024.csv'
 
@@ -89,39 +89,41 @@ column_mappings = {
     }
 }
 
-valid_pri_spec = [
-    'ADULT CONGENITAL HEART DISEASE (ACHD)',
-    'ADVANCED HEART FAILURE AND TRANSPLANT CARDIOLOGY',
-    'CARDIOVASCULAR DISEASE (CARDIOLOGY)',
-    'CERTIFIED CLINICAL NURSE SPECIALIST (CNS)',
-    'CLINICAL SOCIAL WORKER',
-    'CRITICAL CARE (INTENSIVISTS)',
-    'EMERGENCY MEDICINE',
-    'ENDOCRINOLOGY',
-    'FAMILY PRACTICE',
-    'GASTROENTEROLOGY',
-    'GENERAL PRACTICE',
-    'GERIATRIC MEDICINE',
-    'GYNECOLOGICAL ONCOLOGY',
-    'HEMATOLOGY',
-    'HEMATOLOGY/ONCOLOGY',
-    'HOSPICE/PALLIATIVE CARE',
-    'HOSPITALIST',
-    'INFECTIOUS DISEASE',
-    'INTERNAL MEDICINE',
-    'INTERVENTIONAL CARDIOLOGY',
-    'INTERVENTIONAL PAIN MANAGEMENT',
-    'MEDICAL ONCOLOGY',
-    'NEPHROLOGY',
-    'NEUROLOGY',
-    'NURSE PRACTITIONER',
-    'PHYSICAL MEDICINE AND REHABILITATION',
-    'PHYSICAL THERAPY',
-    'PHYSICIAN ASSISTANT',
-    'PULMONARY DISEASE',
-    'RADIATION ONCOLOGY',
-    'RHEUMATOLOGY'
-]
+valid_pri_spec = ['INTERNAL MEDICINE']
+
+# valid_pri_spec = [
+#     'ADULT CONGENITAL HEART DISEASE (ACHD)',
+#     'ADVANCED HEART FAILURE AND TRANSPLANT CARDIOLOGY',
+#     'CARDIOVASCULAR DISEASE (CARDIOLOGY)',
+#     'CERTIFIED CLINICAL NURSE SPECIALIST (CNS)',
+#     'CLINICAL SOCIAL WORKER',
+#     'CRITICAL CARE (INTENSIVISTS)',
+#     'EMERGENCY MEDICINE',
+#     'ENDOCRINOLOGY',
+#     'FAMILY PRACTICE',
+#     'GASTROENTEROLOGY',
+#     'GENERAL PRACTICE',
+#     'GERIATRIC MEDICINE',
+#     'GYNECOLOGICAL ONCOLOGY',
+#     'HEMATOLOGY',
+#     'HEMATOLOGY/ONCOLOGY',
+#     'HOSPICE/PALLIATIVE CARE',
+#     'HOSPITALIST',
+#     'INFECTIOUS DISEASE',
+#     'INTERNAL MEDICINE',
+#     'INTERVENTIONAL CARDIOLOGY',
+#     'INTERVENTIONAL PAIN MANAGEMENT',
+#     'MEDICAL ONCOLOGY',
+#     'NEPHROLOGY',
+#     'NEUROLOGY',
+#     'NURSE PRACTITIONER',
+#     'PHYSICAL MEDICINE AND REHABILITATION',
+#     'PHYSICAL THERAPY',
+#     'PHYSICIAN ASSISTANT',
+#     'PULMONARY DISEASE',
+#     'RADIATION ONCOLOGY',
+#     'RHEUMATOLOGY'
+# ]
 
 # Read FIPS and ZIP-County data
 fips_df = pd.read_csv(fips_file)
@@ -132,9 +134,15 @@ zip_county_df = pd.read_csv(zip_county_file, dtype={'COUNTY': str, 'ZIP': str})
 fips_df['fips_code'] = fips_df['FIPS State'].astype(str).str.zfill(2) + fips_df['FIPS County'].astype(str).str.zfill(3)
 zip_county_df['county'] = zip_county_df['COUNTY'].str.zfill(5)
 
-# Create final ZIP-County lookup
+# Create final ZIP-County lookup and ensure unique county per ZIP
+zip_county_final = (
+    zip_county_df[['ZIP', 'county']]
+    .groupby('ZIP', as_index=False)
+    .first()  # Keep the first county associated with each ZIP
+)
+
 zip_county_final = pd.merge(
-    zip_county_df[['ZIP', 'county']],
+    zip_county_final,
     fips_df[['fips_code', 'County Name']],
     left_on='county', right_on='fips_code',
     how='left'
@@ -149,17 +157,13 @@ for file in csv_files:
     # Get file type
     file_type = file.split('_cleaned.csv')[0].split('_')[0]
     file_type_mapping = {
+        # 'DAC': 'DAC_NationalDownloadableFile',  # Commented out to skip DAC files
         'NH': 'NH_ProviderInfo',
         'Hospital': 'Hospital_General_Information',
-        # 'DAC': 'DAC_NationalDownloadableFile',  # Commented out to skip DAC files
         'HH': 'HH_Provider',
         'Hospice': 'Hospice_Provider'
     }
     file_type = file_type_mapping.get(file_type, file_type)
-
-    # Skip DAC_NationalDownloadableFile_cleaned
-    # if file_type == 'DAC_NationalDownloadableFile':
-    #     continue  # Skip this file
 
     # Combine Provider_Address into Address for all file types
     if 'Provider_Address' in df.columns:
@@ -171,6 +175,10 @@ for file in csv_files:
     
     # Rename columns based on the mapping
     df = df.rename(columns=column_mappings[file_type])
+    
+    # Filter out DAC_NationalDownloadableFile data based on valid_pri_spec
+    if file_type == 'DAC_NationalDownloadableFile':
+        df = df[df['pri_spec'].isin(valid_pri_spec)]
     
     # Consolidate Facility/Provider Name into Facility_Name
     df['Facility_Name'] = df.apply(
@@ -213,6 +221,7 @@ combined_df = combined_df.rename(columns={'County Name': 'County'})
 combined_df['County'] = combined_df['County'].str.upper()
 print(combined_df.head(10))
 
+# Create a subset based on 'Type_1'
 subset_df = combined_df.groupby('Type_1').first().reset_index()
 
 # Save the subset DataFrame to a new CSV file
@@ -222,6 +231,8 @@ subset_df.to_csv(subset_output_file, index=False)
 print(f"Number of rows in combined_df: {len(combined_df)}")
 
 # Save combined data
+# combined_df = combined_df[combined_df['State'].isin(['GA', 'SC'])]
+# combined_df = combined_df[combined_df['pri_spec'].isin(valid_pri_spec)]
 combined_df.to_csv(output_file, index=False)
 
 # Output info

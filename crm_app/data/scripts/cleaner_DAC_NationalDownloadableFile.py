@@ -58,6 +58,9 @@ if not missing_columns:
     # Add new column 'Type_1' at the beginning with all values as 'PHYSICIAN'
     df_filtered.insert(0, 'Type_1', 'CMS - PHYSICIAN')
 
+    # Remove last four digits from Zip values
+    df_filtered['Zip'] = df_filtered['Zip'].astype(str).str[:5]
+
     # Create the Full_Address column
     df_filtered['Full_Address'] = (
         df_filtered['Address'].astype(str) + ', ' +
@@ -68,8 +71,6 @@ if not missing_columns:
 
     # Clean up Full_Address column
     df_filtered['Full_Address'] = df_filtered['Full_Address'].str.strip()
-    # Remove last four digits from Zip values
-    df_filtered['Zip'] = df_filtered['Zip'].astype(str).str[:5]
     # Remove any duplicate rows
     df_filtered = df_filtered.drop_duplicates()
 

@@ -33,6 +33,8 @@ df = pd.read_csv(file_path, dtype=dtype_dict)
 df_filtered = df.loc[:, list(columns_to_include.keys())].copy()
 df_filtered.rename(columns=columns_to_include, inplace=True)
 
+df_filtered.insert(0, 'Type_1', 'CMS - Hospice')
+
 # Convert relevant columns to strings and clean them up
 df_filtered['Address'] = df_filtered['Address'].astype(str).str.strip()
 df_filtered['City_Town'] = df_filtered['City_Town'].astype(str).str.strip()
