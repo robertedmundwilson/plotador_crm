@@ -10,7 +10,7 @@ zip_county_file = '/Users/robertwilson/CMS_Datafiles/ZIP_COUNTY_062024.csv'
 CSV_FILE = '/Users/robertwilson/CMS_Datafiles/Moments/October_SHORT.csv'
 
 # Google Maps API Key (Replace 'YOUR_GOOGLE_API_KEY' with your actual API key)
-gmaps = googlemaps.Client(key='AIzaSyATO9diFoJqVSCqa1VKPlOSYTf-RC2nGag')
+gmaps = googlemaps.Client(key='') #see 1password Google Map API Key
 
 # Read the CSV file into a DataFrame
 df = pd.read_csv(CSV_FILE)
